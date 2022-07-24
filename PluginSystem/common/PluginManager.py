@@ -14,6 +14,10 @@ class APIInterface(object):
 
 
 class PluginManager(object):
+    """
+    A simple plugin manager which support basic plugin discover, load, register...
+    TODO: support hot update
+    """
     provide_api_version = ["0.1", "0.2"]
 
     def __init__(self) -> None:
@@ -25,7 +29,7 @@ class PluginManager(object):
     def create_api_interface(cls, *args, **kwargs) -> APIInterface:
         return APIInterface(*args, **kwargs)
 
-    def _find_plugins(self, plugin_path:str):
+    def _find_plugins(self, plugin_path: str):
         """
         Find all plugins
         """
@@ -52,7 +56,7 @@ class PluginManager(object):
     def _load_plugin(self, name):
         if name in self.__plugins:
             _mod = importlib.import_module(
-                ".",f"PluginSystem.Plugins.{name}.Plugin")
+                ".", f"PluginSystem.Plugins.{name}.Plugin")
             try:
                 _cls = _mod.get_class()
                 _plugin_info = _cls.capabilities(self.provide_api_version)
@@ -62,9 +66,9 @@ class PluginManager(object):
             except RuntimeError:
                 self.api.LogTool.warning(
                     "Incompatible plugin detected [%s]", name)
-    
+
     def get_all_plugin_name(self):
-        return self.__plugins.keys
+        return self.__plugins.keys()
 
     def remove_plugin(self, name):
         if name in sys.modules:
@@ -73,7 +77,7 @@ class PluginManager(object):
             self.__plugins[name] = {}
         self.api.LogTool.warning("Plugin [%s] does not be loaded yet", name)
 
-    def get_plugin(self, name):
+    def get_plugin(self, name) -> object:
         _instant = None
         if name in self.__plugins:
             _api_version = self.__plugins[name]["info"]["supported_api_version"]
@@ -85,6 +89,14 @@ class PluginManager(object):
                 "Failed to create plugin instance, because plugin [%s] does not exist.", name)
 
         return _instant
+
+    def get_plugin_events(self, name) -> list:
+        _events = []
+        if name in self.__plugins:
+            _events = self.__plugins[name]["info"]["events"]
+        else:
+            self.api.LogTool.critical("Failed to load info of [%s]", name)
+        return _events
 
     def load_plugins(self, path="PluginSystem/Plugins"):
         self._find_plugins(path)
