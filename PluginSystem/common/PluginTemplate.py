@@ -1,14 +1,15 @@
 class Plugin(object):
     plugin_version = "20220701"
     supported_api_version = "0.1"
-    register_events = []
+    register_events = ["load"]
 
     def __init__(self, api_version, api_interface):
         self._api_version = api_version
         self._api_interface = api_interface
 
     def callback(self, event_type=None, event_value=None):
-        print("Hello World")
+        if event_type == "load":
+            print("Service loaded")
 
     def unload(self, *args, **kwargs):
         pass

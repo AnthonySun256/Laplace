@@ -1,16 +1,7 @@
-from .PluginTemplate import Plugin
 import os
 import sys
 import importlib
-import logging
-
-
-class APIInterface(object):
-    def __init__(self, *args, **kwargs):
-        self.LogTool = logging
-        self.LogTool.basicConfig(level=logging.DEBUG,
-                                 format="[%(asctime)s] [%(levelname)s] %(message)s",
-                                 datefmt='%Y-%m-%d  %H:%M:%S')
+from .APIInterface import APIInterface
 
 
 class PluginManager(object):
@@ -31,41 +22,49 @@ class PluginManager(object):
 
     def _find_plugins(self, plugin_path: str):
         """
-        Find all plugins
+        Find plugins from the given path.
+
+        :param plugin_path: The path to the plugin
         """
         if plugin_path is None:
             self.api.LogTool.critical("Missing arg: [plugin_path]")
             raise RuntimeError("Missing arg plugin_path")
 
-        self.api.LogTool.debug("Now in the path [%s]", os.getcwd())
+        self.api.LogTool.debug("Now in the path [%s]"% os.getcwd())
+
         for dirname in os.listdir(plugin_path):
             f = os.path.join(plugin_path, dirname, "Plugin.py")
+
             self.api.LogTool.debug(
-                "Find  plugins [%s] in [%s]", os.path.basename(dirname), f)
+                "Find  plugins [%s] in [%s]"%( os.path.basename(dirname), f))
+
             if os.path.exists(f):
                 _plugin_name = dirname
 
                 if _plugin_name in self.__plugins:
                     self.api.LogTool.warning(
-                        "Plugin [%s] already exists, skipping", _plugin_name)
+                        f"Plugin [{_plugin_name}] already exists, skipping")
                 else:
                     self.__plugins[_plugin_name] = {}
                     self.api.LogTool.info(
-                        "Find plugin [%s]", _plugin_name)
+                        f"Find plugin [{_plugin_name}]")
 
     def _load_plugin(self, name):
         if name in self.__plugins:
+
             _mod = importlib.import_module(
-                ".", f"PluginSystem.Plugins.{name}.Plugin")
+                ".", 
+                f"Laplace.PluginSystem.Plugins.{name}.Plugin")
+
             try:
                 _cls = _mod.get_class()
                 _plugin_info = _cls.capabilities(self.provide_api_version)
                 self.__plugins[name]["module"] = _cls
                 self.__plugins[name]["info"] = _plugin_info
-                self.api.LogTool.info("Plugin [%s] Load successful", name)
+                self.api.LogTool.info(f"Plugin [{name}] Load successful")
             except RuntimeError:
                 self.api.LogTool.warning(
-                    "Incompatible plugin detected [%s]", name)
+                    f"Incompatible plugin detected [{name}]")
 
     def get_all_plugin_name(self):
         return self.__plugins.keys()
@@ -73,20 +72,20 @@ class PluginManager(object):
     def remove_plugin(self, name):
         if name in sys.modules:
             sys.modules.pop(name)
-            self.api.LogTool.info("Unload plugin [%s]", name)
+            self.api.LogTool.info(f"Unload plugin [{name}]")
             self.__plugins[name] = {}
-        self.api.LogTool.warning("Plugin [%s] does not be loaded yet", name)
+        self.api.LogTool.warning(f"Plugin [{name}] does not be loaded yet")
 
-    def get_plugin(self, name) -> object:
+    def get_plugin_instance(self, name) -> object:
         _instant = None
         if name in self.__plugins:
-            _api_version = self.__plugins[name]["info"]["supported_api_version"]
+            _api_version = self.__plugins[name]["info"]["api_version"]
             _instant = self.__plugins[name]["module"](_api_version, self.api)
-            self.api.LogTool.debug("Create a instance of Plugin [%s]", name)
+            self.api.LogTool.debug(f"Create a instance of Plugin [{name}]")
 
         else:
             self.api.LogTool.warning(
-                "Failed to create plugin instance, because plugin [%s] does not exist.", name)
+                f"Failed to create plugin instance, because plugin [{name}] does not exist.")
 
         return _instant
 
@@ -95,10 +94,10 @@ class PluginManager(object):
         if name in self.__plugins:
             _events = self.__plugins[name]["info"]["events"]
         else:
-            self.api.LogTool.critical("Failed to load info of [%s]", name)
+            self.api.LogTool.critical(f"Failed to load info of [{name}]")
         return _events
 
-    def load_plugins(self, path="PluginSystem/Plugins"):
+    def load_plugins(self, path="./PluginSystem/Plugins"):
         self._find_plugins(path)
         for name in self.__plugins.keys():
             self._load_plugin(name)
