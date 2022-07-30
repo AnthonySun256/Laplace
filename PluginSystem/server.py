@@ -2,25 +2,20 @@ from .common.PluginManager import PluginManager as pm
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue, Empty
 from threading import Thread
-import time
-"""
-TODO: 注册事件——模仿 linux 内核，给每个注册事件的插件一个任务队列，来了任务放到相应的槽里，然后定时轮询有事件的插件依次执行
-"""
-
 
 class PluginServer(object):
-    works_num = 4
-    queue_size = -1  # infinite
-
-    def __init__(self,Plugin_path="./Plugins") -> None:
+    def __init__(self,Plugin_path="./Plugins", polling_interval=0.5, workers_num=10, queue_size=-1) -> None:
+        self._workers_num = workers_num
+        self._queue_size = queue_size
         self._pm = pm()
-        self._pool = ThreadPoolExecutor(self.works_num)
-        self._event_queue = Queue(self.queue_size)
+        self._pool = ThreadPoolExecutor(self._workers_num)
+        self._event_queue = Queue(self._queue_size)
         self._event_list = {"load": [], "command": []}  # example event
         self._plugins = {}
         self._plugin_path = Plugin_path
         self._polling_timer = Thread(target=self._polling_events)
         self._polling_timer.daemon=True
+        self._polling_interval = polling_interval
         self._register_plugins()
         self._polling_timer.start()
 
@@ -34,7 +29,9 @@ class PluginServer(object):
         """
         self._pm.load_plugins(path=self._plugin_path)
         _names = self._pm.get_all_plugin_name()
+
         self._pm.api.LogTool.debug(f"Loaded plugins:{_names}")
+
         for _name in _names:
             self._register_plugin(_name)
 
@@ -46,11 +43,12 @@ class PluginServer(object):
         """
         self._plugins[name]={}
         self._plugins[name]["instance"] = self._pm.get_plugin_instance(name)
+        
         for event in self._pm.get_plugin_events(name):
             if event in self._event_list:
                 self._event_list[event].append(name)
                 self._pm.api.LogTool.debug(
-                    f"Plugin [{name}] registe event [{event}]")
+                    f"Plugin [{name}] registers event [{event}]")
             else:
                 self._pm.api.LogTool.warning(
                     f"Plugin [{name}] want to register not supported event [{event}], skip.")
@@ -72,7 +70,7 @@ class PluginServer(object):
                     self._exec_plugin_callback(_event_type, _event_value)
                 except Empty:
                     pass
-            time.sleep(0.5)
+            time.sleep(self._polling_interval)
 
     def _exec_plugin_callback(self, event_type, event_value):
         for _plugin_name in self._event_list[event_type]:
@@ -80,7 +78,7 @@ class PluginServer(object):
                 self._plugins[_plugin_name]["instance"].callback, event_type, event_value)
 
             self._pm.api.LogTool.debug(
-                f"Plugin [{_plugin_name}]] recieved event [{event_type}]")
+                f"Plugin [{_plugin_name}]] received event [{event_type}]")
 
     def append_event(self, event_type, event_value = None):
         """Add events to event list

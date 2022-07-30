@@ -15,7 +15,7 @@ class Plugin(object):
         pass
 
     @classmethod
-    def capabilities(cls, api_versions: list[str]) -> dict:
+    def capabilities(cls, api_versions: 'list[str]') -> dict:
 
         if cls.supported_api_version in api_versions:
             _info = {
@@ -29,5 +29,6 @@ class Plugin(object):
                 f"API versions [{cls.supported_api_version}] are not supported!")
 
 
+# Get the class, not object instance!
 def get_class(*args, **kwargs) -> Plugin:
     return Plugin

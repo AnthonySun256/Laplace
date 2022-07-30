@@ -6,12 +6,12 @@ from loguru import logger
 import pyttsx3
 
 class Laplace(object):
-    def __init__(self, recognition_engine="google", hot_word=None,language='en_us',mic_index=None, speaker_index=None, Plugin_path="./Plugins"):
+    def __init__(self, recognition_engine="google", hot_word=None,language='en-US', Authentic_key=None,mic_index=None, speaker_index=None, Plugin_path="./Plugins"):
 
         logger.info("Initializing plugin system")
         self._ps = PluginServer(Plugin_path=Plugin_path)
         self._audio = PyAudio()
-
+        self._Authentic_key = Authentic_key
         self._mic_index = mic_index if mic_index is not None else self._audio.get_default_input_device_info()['index']
         self._speaker_index = speaker_index if speaker_index is not None else self._audio.get_default_output_device_info()['index']
 
@@ -38,21 +38,27 @@ class Laplace(object):
         return device_list
 
     def _get_recognize(self):
-        logger.debug("Starting recognition...")
+        logger.debug("Start recoding...")
         with self._mic as source:
             self._recognizer.adjust_for_ambient_noise(source)
             _input_audio = self._recognizer.listen(source)
         result = None
         lang = self._language
+        logger.debug("Starting recognition...")
 
         # example
-        if self._recognition_engine == "google":
-            if self._language == "en_us":
-                lang = "en-US"
-            try:
-                result = self._recognizer.recognize_google(_input_audio,language=lang)
-            except UnknownValueError:
-                pass
+        try:
+            if self._recognition_engine == "google":
+                    result = self._recognizer.recognize_google(_input_audio,language=self._language,key=self._Authentic_key)
+            elif self._recognition_engine == "bing":
+                    result = self._recognizer.recognize_bing(_input_audio,language=self._language,key=self._Authentic_key)
+            elif self._recognition_engine == "google_cloud":
+                result = self._recognizer.recognize_google_cloud(_input_audio,language=self._language,credentials_json=self._credentials_json)
+            elif self._recognition_engine == "pocketsphinx":
+                result = self._recognizer.recognize_sphinx(_input_audio,language=self._language)
+        except UnknownValueError:
+            pass
+        
         else:
             logger.warning("Wrong recognition engine specified.")
             raise ValueError("Wrong recognition engine specified.")

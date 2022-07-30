@@ -7,7 +7,9 @@ from .APIInterface import APIInterface
 class PluginManager(object):
     """
     A simple plugin manager which support basic plugin discover, load, register...
-    TODO: support hot update
+    TODO: support hot plug
+    TODO: support Plugin priority level
+    TODO: allow plugins block events
     """
     provide_api_version = ["0.1", "0.2"]
 
@@ -18,6 +20,8 @@ class PluginManager(object):
 
     @classmethod
     def create_api_interface(cls, *args, **kwargs) -> APIInterface:
+        """Create ApiInterface
+        """
         return APIInterface(*args, **kwargs)
 
     def _find_plugins(self, plugin_path: str):
