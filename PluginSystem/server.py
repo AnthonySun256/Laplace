@@ -2,12 +2,14 @@ from .common.PluginManager import PluginManager as pm
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue, Empty
 from threading import Thread
+import time
 
 class PluginServer(object):
-    def __init__(self,Plugin_path="./Plugins", polling_interval=0.5, workers_num=10, queue_size=-1) -> None:
+    def __init__(self,Plugin_path="./Plugins", polling_interval=0.5, workers_num=10, queue_size=-1, api_interface=None) -> None:
+        self._api_interface = api_interface
         self._workers_num = workers_num
         self._queue_size = queue_size
-        self._pm = pm()
+        self._pm = pm(api_interface=api_interface)
         self._pool = ThreadPoolExecutor(self._workers_num)
         self._event_queue = Queue(self._queue_size)
         self._event_list = {"load": [], "command": []}  # example event
@@ -30,7 +32,7 @@ class PluginServer(object):
         self._pm.load_plugins(path=self._plugin_path)
         _names = self._pm.get_all_plugin_name()
 
-        self._pm.api.LogTool.debug(f"Loaded plugins:{_names}")
+        self._api_interface.LogTool.debug(f"Loaded plugins:{_names}")
 
         for _name in _names:
             self._register_plugin(_name)
@@ -47,10 +49,10 @@ class PluginServer(object):
         for event in self._pm.get_plugin_events(name):
             if event in self._event_list:
                 self._event_list[event].append(name)
-                self._pm.api.LogTool.debug(
+                self._api_interface.LogTool.debug(
                     f"Plugin [{name}] registers event [{event}]")
             else:
-                self._pm.api.LogTool.warning(
+                self._api_interface.LogTool.warning(
                     f"Plugin [{name}] want to register not supported event [{event}], skip.")
 
     def _polling_events(self):
@@ -77,7 +79,7 @@ class PluginServer(object):
             self._pool.submit(
                 self._plugins[_plugin_name]["instance"].callback, event_type, event_value)
 
-            self._pm.api.LogTool.debug(
+            self._api_interface.LogTool.debug(
                 f"Plugin [{_plugin_name}]] received event [{event_type}]")
 
     def append_event(self, event_type, event_value = None):
@@ -89,6 +91,6 @@ class PluginServer(object):
         """
         if event_type in self._event_list:
             self._event_queue.put((event_type, event_value), block=False)
-            self._pm.api.LogTool.debug(f"Add event [{event_type}],value [{event_value}]")
+            self._api_interface.LogTool.debug(f"Add event [{event_type}],value [{event_value}]")
         else:
-            self._pm.api.LogTool.warning(f"Not support event type: [{event_type}]", )
+            self._api_interface.LogTool.warning(f"Not support event type: [{event_type}]", )
