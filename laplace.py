@@ -1,5 +1,5 @@
-from PluginSystem.server import PluginServer
-from APIInterface import APIInterface
+from .PluginSystem.server import PluginServer
+from .APIInterface import APIInterface
 from pyaudio import PyAudio
 import speech_recognition
 from speech_recognition import UnknownValueError
@@ -71,14 +71,14 @@ class Laplace(object):
             self.spin_once()
     
     def spin_once(self):
-        speechs = ""
+        _command = ""
         if self._waiting_for_hot_word:
-            speechs = self._get_recognize()
-            if self._hot_word == speechs:
+            _command = self._get_recognize()
+            if self._hot_word == _command:
                 self._waiting_for_hot_word = False
         else:
             #pyttsx3.speak("Say command to me")
-            speechs = self._get_recognize()
-            self._ps.append_event("command",speechs)
+            _command = self._get_recognize()
+            self._ps.append_event("command",_command)
             self._waiting_for_hot_word = True if self._hot_word is not None else False
-        self._api_interface.LogTool.debug(f"recognized [{speechs}]")
+        self._api_interface.LogTool.debug(f"recognized [{_command}]")
